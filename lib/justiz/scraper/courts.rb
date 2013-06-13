@@ -2,12 +2,29 @@ module Justiz
   module Scraper
     class Courts
 
+      def court_types
+        select_options(home_page, 'gerausw')
+      end
+
+      def states
+        select_options(home_page, 'landausw')
+      end
+
       def scrape(court_type, state)
-        form = home_page.forms[2]
-        form['gerausw'] = court_type
-        form['landausw'] = state
-        page = agent.submit(form, form.buttons_with(name: 'suchen1').first)
-        parse_page(page)
+        page = load_page(court_type, state)
+        # if we reach limit on ALL, query each subtype
+        if court_type == 'ALL' && limit_warning?(page)
+            court_types.map do |court_type, description|
+              next if court_type == 'ALL'
+              page = load_page(court_type, state)
+              if limit_warning?(page)
+                puts(STDERR, "Warning: State #{state} has too many contacts of #{description}[#{court_type}]")
+              end
+              parse_page(page)
+            end.flatten.compact.uniq
+        else
+          parse_page(page)
+        end
       end
 
       private
@@ -16,13 +33,18 @@ module Justiz
         @home_page ||= agent.get('http://www.justizadressen.nrw.de/og.php?MD=nrw')
       end
 
+      def load_page(court_type, state)
+        form = home_page.forms[2]
+        form['gerausw'] = court_type
+        form['landausw'] = state
+        agent.submit(form, form.buttons_with(name: 'suchen1').first)
+      end
+
       def agent
         @agent ||= Justiz::Scraper::Agent.new
       end
 
       def parse_page(page)
-        find_limit_warning(page)
-
         rows = page.search('tr').map { |tr| tr.search('td').to_a }
         contact_rows = rows.find_all { |row| row.length == 3 }
         contact_rows.map do |court, addresses, phones|
@@ -40,9 +62,15 @@ module Justiz
         end
       end
 
-      def find_limit_warning(page)
-        if page.search('p').find {|p| p.text =~ /Ihre Suchanfrage ergab mehr als/i}
-          puts ">>> Not all contacts listed <<<"
+      def limit_warning?(page)
+        # avoid invalid UTF-8 errors by force encoding.
+        page.search('p').find {|p| p.text.force_encoding("ISO-8859-15") =~ /Ihre Suchanfrage ergab mehr als/i}
+      end
+
+      def select_options(page, name)
+        page.search("[name='#{name}'] > option").inject({}) do |memo, node|
+          memo[node['value']] = node.text
+          memo
         end
       end
 

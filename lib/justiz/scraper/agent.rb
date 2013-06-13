@@ -9,7 +9,7 @@ module Justiz
           config.default_encoding = 'UTF-8'
           config.force_default_encoding = true
         end
-        self.log = Logger.new STDOUT
+        #self.log = Logger.new STDOUT
         self.user_agent_alias = 'Mac Safari'
       end
     end
