@@ -1,6 +1,7 @@
 require "justiz/version"
 require 'justiz/cli'
-require 'justiz/agent'
+require 'justiz/scraper/agent'
+require 'justiz/scraper/courts'
 require 'justiz/contact'
 
 module Justiz
