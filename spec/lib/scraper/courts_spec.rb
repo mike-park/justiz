@@ -97,10 +97,13 @@ describe Justiz::Scraper::Courts do
           "TH" => "Thüringen 63"
       }
       states = subject.states
+      total = 0
       states.keys.each do |state|
         count = subject.scrape('ALL', state).count
         states[state] += " #{count}"
+        total += count
       end
+      puts "Total #{total}"
       expect(states).to eq(original)
     end
   end
