@@ -3,111 +3,99 @@ module Justiz
     class Courts
 
       def court_types
-        select_options(home_page, 'gerausw')
+        home_page.options_of 'gerausw'
       end
 
       def states
-        select_options(home_page, 'landausw')
+        home_page.options_of 'landausw'
       end
 
-      def scrape(court_type, state)
-        page = load_page(court_type, state)
-        # if we reach limit on ALL, query each subtype
-        if court_type == 'ALL' && limit_warning?(page)
-            court_types.map do |court_type, description|
-              next if court_type == 'ALL'
-              page = load_page(court_type, state)
-              if limit_warning?(page)
-                puts(STDERR, "Warning: State #{state} has too many contacts of #{description}[#{court_type}]")
-              end
-              parse_page(page)
-            end.flatten.compact.uniq
-        else
-          parse_page(page)
-        end
+      def contacts
+        states.keys.map do |state|
+          contacts_for(state)
+        end.flatten.compact
+      end
+
+      def contacts_for(state)
+        page = load_page('ALL', state)
+        return page.contacts unless page.limit_warning?
+
+        # do each type separately hoping to avoid limit warning
+        court_types.keys.map do |court_type|
+          contacts_of_type(court_type, state)
+        end.flatten.compact.uniq
+      end
+
+      def contacts_of_type(type, state)
+        load_page(type, state, with_warning: true).contacts
       end
 
       private
 
       def home_page
-        @home_page ||= agent.get('http://www.justizadressen.nrw.de/og.php?MD=nrw')
+        @home_page ||= Page.new(agent.get('http://www.justizadressen.nrw.de/og.php?MD=nrw'))
       end
 
-      def load_page(court_type, state)
+      def load_page(court_type, state, options = {})
         form = home_page.forms[2]
         form['gerausw'] = court_type
         form['landausw'] = state
-        agent.submit(form, form.buttons_with(name: 'suchen1').first)
+        page = Page.new(agent.submit(form, form.buttons_with(name: 'suchen1').first))
+        if options[:with_warning] && page.limit_warning?
+          puts(STDERR, "Warning: State #{state} has too many contacts of #{court_type}")
+        end
+        page
       end
 
       def agent
         @agent ||= Justiz::Scraper::Agent.new
       end
+    end
 
-      def parse_page(page)
-        rows = page.search('tr').map { |tr| tr.search('td').to_a }
-        contact_rows = rows.find_all { |row| row.length == 3 }
-        contact_rows.map do |court, addresses, phones|
-          addresses = AddressTd.new(addresses)
-          phones = AddressTd.new(phones)
-
-          Justiz::Contact.new.merge court: court.text.strip,
-                                    location: addresses.lieferanschrift,
-                                    post: addresses.postfach,
-                                    phone: phones.telefone,
-                                    fax: phones.fax,
-                                    justiz_id: phones.justiz_id,
-                                    url: phones.url,
-                                    email: phones.email
+    class Page < SimpleDelegator
+      def limit_warning?
+        # avoid invalid UTF-8 errors by force encoding.
+        search('p').find do |p|
+          p.text.force_encoding("ISO-8859-15") =~ /Ihre Suchanfrage ergab mehr als/i
         end
       end
 
-      def limit_warning?(page)
-        # avoid invalid UTF-8 errors by force encoding.
-        page.search('p').find {|p| p.text.force_encoding("ISO-8859-15") =~ /Ihre Suchanfrage ergab mehr als/i}
-      end
-
-      def select_options(page, name)
-        page.search("[name='#{name}'] > option").inject({}) do |memo, node|
-          memo[node['value']] = node.text
+      # return hash of options of select field, exclude ALL value
+      def options_of(name)
+        search("[name='#{name}'] > option").inject({}) do |memo, node|
+          memo[node['value']] = node.text unless node['value'] == 'ALL'
           memo
         end
       end
 
-      class AddressTd
+      def contacts
+        @contacts ||= parse_contacts
+      end
+
+      def parse_contacts
+        rows = search('tr').map { |tr| tr.search('td').to_a }
+        contact_rows = rows.find_all { |row| row.length == 3 }
+        contact_rows.map do |court, addresses, kontakt|
+          addresses = AddressTd.new(addresses)
+          kontakt = KontaktTd.new(kontakt)
+
+          Justiz::Contact.new(court: court.text.strip,
+                              location: addresses.lieferanschrift,
+                              post: addresses.postfach,
+                              phone: kontakt.telefone,
+                              fax: kontakt.fax,
+                              justiz_id: kontakt.justiz_id,
+                              url: kontakt.url,
+                              email: kontakt.email)
+        end
+      end
+
+      class Td
         attr_reader :texts
 
         def initialize(node)
           nodes = node.children.to_a
           @texts = nodes.map { |n| n.text.strip }.find_all { |t| !blank?(t) }
-        end
-
-        def telefone
-          same_line('Telefon:')
-        end
-
-        def fax
-          same_line('Fax:')
-        end
-
-        def justiz_id
-          same_line('XJustiz-ID:')
-        end
-
-        def lieferanschrift
-          next_line('Lieferanschrift')
-        end
-
-        def postfach
-          next_line('Postanschrift')
-        end
-
-        def url
-          next_line('URL')
-        end
-
-        def email
-          next_line('Mail')
         end
 
         private
@@ -127,6 +115,43 @@ module Justiz
           text = texts.map { |t| t.match(reg) }.compact.first
           text = text[1].strip if text
           text if !blank?(text)
+        end
+      end
+
+      class AddressTd < Td
+        def lieferanschrift
+          next_line('Lieferanschrift')
+        end
+
+        def postfach
+          next_line('Postanschrift')
+        end
+      end
+
+      class KontaktTd < Td
+        attr_reader :url
+
+        def initialize(node)
+          super
+          if (a = node.search('a').first)
+            @url = a['href']
+          end
+        end
+
+        def telefone
+          same_line('Telefon:')
+        end
+
+        def fax
+          same_line('Fax:')
+        end
+
+        def justiz_id
+          same_line('XJustiz-ID:')
+        end
+
+        def email
+          next_line('Mail')
         end
       end
     end
