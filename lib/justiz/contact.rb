@@ -24,11 +24,11 @@ module Justiz
     end
 
     def location_address
-      Address.new(self[:location])
+      Address.new(location)
     end
 
     def post_address
-      Address.new(self[:post])
+      Address.new(post)
     end
 
     def digest

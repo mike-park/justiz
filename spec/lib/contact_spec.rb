@@ -20,6 +20,11 @@ describe Justiz::Contact do
     end
   end
 
+  it "should parse addresses" do
+    expect(contact.location_address.plz).to eq('40213')
+    expect(contact.post_address.plz).to eq('40999')
+  end
+
   it "should have an id" do
     id = "#{court[:court]}#{court[:email]}"
     expect(contact.id).to eq(id)
