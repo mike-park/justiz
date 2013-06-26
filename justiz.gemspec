@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["mikep@quake.net"]
   spec.description   = %q{Extracts contact data.}
   spec.summary       = %q{Extract contact data from http://www.justizadressen.nrw.de/}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/mike-park/justiz"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
