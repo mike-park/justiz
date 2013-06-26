@@ -34,7 +34,7 @@ module Justiz
     def digest
       sha256 = Digest::SHA2.new
       FIELDS.each do |field|
-        sha256 << send(field)
+        sha256 << send(field).to_s
       end
       Digest.hexencode(sha256.digest)
     end
