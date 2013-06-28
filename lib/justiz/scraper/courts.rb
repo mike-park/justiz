@@ -69,7 +69,7 @@ module Justiz
       end
 
       def contacts
-        @contacts ||= parse_contacts
+        @contacts ||= parse_contacts.uniq
       end
 
       def parse_contacts

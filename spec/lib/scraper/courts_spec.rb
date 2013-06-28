@@ -200,6 +200,13 @@ describe Justiz::Scraper::Courts do
         expect(contact.post_address).to be_a(Justiz::Address)
       end
     end
+
+    it "should rename court" do
+      VCR.use_cassette 'courts/zvg_nrw' do
+        contact = subject.contacts_of_type('ZVG', 'NRW').first
+        expect(contact.court).to_not match(/Zwangsversteigerung/)
+      end
+    end
   end
 end
 

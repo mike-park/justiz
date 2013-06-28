@@ -34,4 +34,16 @@ describe Justiz::Contact do
     digest = "76ef09d0c7d0078015df7a948cf0352c00f6451dab354389b21895a50d89a4a8"
     expect(contact.digest).to eq(digest)
   end
+
+  it "should remove - xxx - from court" do
+    court = "Something#{Justiz::Contact::COURT_NOISE.first}"
+    contact = Justiz::Contact.new(court: court)
+    expect(contact.court).to eq('Something')
+  end
+
+  it "should not remove - xxx - from court" do
+    court = 'Something - Not be removed -'
+    contact = Justiz::Contact.new(court: court)
+    expect(contact.court).to eq(court)
+  end
 end
