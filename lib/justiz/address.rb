@@ -3,7 +3,7 @@ module Justiz
     attr_reader :text, :city, :plz, :street
 
     def initialize(text)
-      @text = text
+      @text = text.to_s
       parse
     end
 
@@ -18,7 +18,7 @@ module Justiz
     end
 
     def parse_city(string)
-      if string.match(/\s*([0-9]{5})\s*(.*)/i)
+      if string.to_s.match(/\s*([0-9]{5})\s*(.*)/i)
         [$1, $2]
       end
     end
