@@ -73,7 +73,7 @@ describe Justiz::Scraper::Courts do
         VCR.use_cassette 'courts/all_nrw' do
           contacts = subject.contacts_for('NRW')
           #ap contacts
-          expect(contacts.count).to eq(513)
+          expect(contacts.count).to eq(377)
         end
       end
     end
@@ -83,16 +83,16 @@ describe Justiz::Scraper::Courts do
         VCR.use_cassette 'courts/all_all' do
           original = {
               "BRD" => "Bundesgerichte/-behörden 12",
-              "BW" => "Baden-Württemberg 430",
-              "BAY" => "Bayern 348",
+              "BW" => "Baden-Württemberg 284",
+              "BAY" => "Bayern 263",
               "B" => "Berlin 38",
               "BRA" => "Brandenburg 64",
               "BRE" => "Bremen 19",
               "HH" => "Hamburg 35",
               "HES" => "Hessen 115",
               "MV" => "Mecklenburg-Vorpommern 55",
-              "NS" => "Niedersachsen 305",
-              "NRW" => "Nordrhein-Westfalen 513",
+              "NS" => "Niedersachsen 262",
+              "NRW" => "Nordrhein-Westfalen 377",
               "RPF" => "Rheinland-Pfalz 101",
               "SAA" => "Saarland 32",
               "SAC" => "Sachsen 79",
@@ -108,7 +108,7 @@ describe Justiz::Scraper::Courts do
             total += count
           end
           expect(states).to eq(original)
-          expect(total).to eq(2336)
+          expect(total).to eq(1926)
         end
       end
     end

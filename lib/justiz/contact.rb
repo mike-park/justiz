@@ -33,8 +33,9 @@ module Justiz
     def id
       # too many duplicates
       #[court, justiz_id].compact.join("")
-      # currently no duplicates
-      [court, email].compact.join("")
+      # with noise removed also too many duplicates
+      #[court, email].compact.join("")
+      digest
     end
 
     def location_address
@@ -51,6 +52,10 @@ module Justiz
         sha256 << send(field).to_s
       end
       Digest.hexencode(sha256.digest)
+    end
+
+    def to_s
+      inspect
     end
 
     private
