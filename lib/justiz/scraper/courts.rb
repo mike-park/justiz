@@ -11,9 +11,10 @@ module Justiz
       end
 
       def contacts
-        states.keys.map do |state|
+        contacts = states.keys.map do |state|
           contacts_for(state)
         end.flatten.compact
+        uniq_contacts(contacts)
       end
 
       def contacts_for(state)
@@ -21,16 +22,22 @@ module Justiz
         return page.contacts unless page.limit_warning?
 
         # do each type separately hoping to avoid limit warning
-        court_types.keys.map do |court_type|
+        contacts = court_types.keys.map do |court_type|
           contacts_of_type(court_type, state)
-        end.flatten.compact.uniq
+        end.flatten.compact
+        uniq_contacts(contacts)
       end
 
       def contacts_of_type(type, state)
-        load_page(type, state, with_warning: true).contacts
+        contacts = load_page(type, state, with_warning: true).contacts
+        uniq_contacts(contacts)
       end
 
       private
+
+      def uniq_contacts(contacts)
+        contacts.uniq {|contact| contact.digest }
+      end
 
       def home_page
         @home_page ||= Page.new(agent.get('http://www.justizadressen.nrw.de/og.php?MD=nrw'))
